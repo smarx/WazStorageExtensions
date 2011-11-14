@@ -5,6 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics;
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.StorageClient;
+using smarx.WazStorageExtensions;
 
 namespace WorkerRole1
 {
@@ -14,39 +17,53 @@ namespace WorkerRole1
 
         public void Calculate()
         {
+            var acct = CloudStorageAccount.DevelopmentStorageAccount;
+            var client = acct.CreateCloudBlobClient();
+            var taskBlob = client.GetBlobReference("task-blobs/fib-task-blob");
+            var autoRenew = new AutoRenewLease(taskBlob);
 
-            var cancellationSource = new CancellationTokenSource();
-            var cancellationToken = cancellationSource.Token;
-            var calculatorState = new CalculatorState { MaxNumbersInSequence = 70 };
+            if (autoRenew.HasLease)
+            {
 
-            var calculatorTask = Task.Factory.StartNew<CalculatorResult>((state) => {
 
-                isCalculating = true;
-                cancellationToken.ThrowIfCancellationRequested();
+                var cancellationSource = new CancellationTokenSource();
+                var cancellationToken = cancellationSource.Token;
+                var calculatorState = new CalculatorState { MaxNumbersInSequence = 50 };
 
-                var cs = (CalculatorState)state;
-                var calculatorResult = new CalculatorResult();
-                Func<int, int> fib = null;
+                var calculatorTask = Task.Factory.StartNew<CalculatorResult>((state) =>
+                {
 
-                while (! cancellationToken.IsCancellationRequested) {
-                    fib = number => number > 1 ? fib(number - 1) + fib(number - 2) : number;
+                    isCalculating = true;
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    // fetch the first 100 numbers in the fibonacci sequence
-                    for (int i = 0; i < cs.MaxNumbersInSequence; i++) {
-                        var nextNumber = fib(i);
-                        calculatorResult.Numbers.Add(nextNumber);
-                        Trace.WriteLine(String.Format("ix:{0} - {1}", (i + 1), nextNumber));
+                    var cs = (CalculatorState)state;
+                    var calculatorResult = new CalculatorResult();
+                    Func<int, int> fib = null;
+
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        fib = number => number > 1 ? fib(number - 1) + fib(number - 2) : number;
+
+                        // fetch the first 100 numbers in the fibonacci sequence
+                        for (int i = 0; i < cs.MaxNumbersInSequence; i++)
+                        {
+                            var nextNumber = fib(i);
+                            calculatorResult.Numbers.Add(nextNumber);
+                            Trace.WriteLine(String.Format("ix:{0} - {1}", (i + 1), nextNumber));
+                        }
                     }
-                }
 
-                isCalculating = false;
-                return calculatorResult;
+                    isCalculating = false;
+                    return calculatorResult;
 
-            }, calculatorState, cancellationToken,  TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                }, calculatorState, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-            calculatorTask.ContinueWith(CompletedAction(), cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                calculatorTask.ContinueWith(CompletedAction(), cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
-            calculatorTask.ContinueWith(ErrorAction(), TaskContinuationOptions.OnlyOnFaulted);
+                calculatorTask.ContinueWith(ErrorAction(), TaskContinuationOptions.OnlyOnFaulted);
+            }
+
+            autoRenew.Dispose();
         }
 
         private Action<Task<CalculatorResult>> ErrorAction()

@@ -61,6 +61,12 @@
   <ItemGroup>
     <None Include="app.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WazStorageExtensions.csproj">
+      <Project>{DC796415-5760-4021-8E92-CB615569D84E}</Project>
+      <Name>WazStorageExtensions</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

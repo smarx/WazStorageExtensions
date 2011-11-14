@@ -72,6 +72,8 @@ namespace smarx.WazStorageExtensions
                 }
             }
             leaseId = blob.TryAcquireLease();
+            Trace.Write("Acquired lease, leaseId: " + leaseId);
+
             if (HasLease)
             {
                 StartRenewalTask(blob);
