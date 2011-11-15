@@ -6,4 +6,4 @@ bin
 *.nupkg
 *.chm
 
-*packages/*
+*packages*
