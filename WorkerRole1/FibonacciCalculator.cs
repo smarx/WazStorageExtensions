@@ -8,6 +8,7 @@ using System.Diagnostics;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
 using smarx.WazStorageExtensions;
+using Microsoft.WindowsAzure.ServiceRuntime;
 
 namespace WorkerRole1
 {
@@ -17,21 +18,22 @@ namespace WorkerRole1
 
         public void Calculate()
         {
-            var acct = CloudStorageAccount.DevelopmentStorageAccount;
+            CloudStorageAccount.SetConfigurationSettingPublisher((configName, configSetter) => {
+                configSetter(RoleEnvironment.GetConfigurationSettingValue(configName));
+            });
+            var acct = CloudStorageAccount.FromConfigurationSetting("Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString");
             var client = acct.CreateCloudBlobClient();
-            var taskBlob = client.GetBlobReference("task-blobs/fib-task-blob");
+            var taskBlob = client.GetBlobReference("dev-task-blobs/fib-task-blob");
             var autoRenew = new AutoRenewLease(taskBlob);
 
-            if (autoRenew.HasLease)
-            {
+            if (autoRenew.HasLease) {
 
 
                 var cancellationSource = new CancellationTokenSource();
                 var cancellationToken = cancellationSource.Token;
-                var calculatorState = new CalculatorState { MaxNumbersInSequence = 50 };
+                var calculatorState = new CalculatorState { MaxNumbersInSequence = 45 };
 
-                var calculatorTask = Task.Factory.StartNew<CalculatorResult>((state) =>
-                {
+                var calculatorTask = Task.Factory.StartNew<CalculatorResult>((state) => {
 
                     isCalculating = true;
                     cancellationToken.ThrowIfCancellationRequested();
@@ -39,21 +41,23 @@ namespace WorkerRole1
                     var cs = (CalculatorState)state;
                     var calculatorResult = new CalculatorResult();
                     Func<int, int> fib = null;
+                    fib = number => number > 1 ? fib(number - 1) + fib(number - 2) : number;
 
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        fib = number => number > 1 ? fib(number - 1) + fib(number - 2) : number;
-
-                        // fetch the first 100 numbers in the fibonacci sequence
-                        for (int i = 0; i < cs.MaxNumbersInSequence; i++)
-                        {
-                            var nextNumber = fib(i);
-                            calculatorResult.Numbers.Add(nextNumber);
-                            Trace.WriteLine(String.Format("ix:{0} - {1}", (i + 1), nextNumber));
+                    while (autoRenew.HasLease && isCalculating && !cancellationToken.IsCancellationRequested) {
+                        for (int i = 0; i < cs.MaxNumbersInSequence; i++) {
+                            if (!autoRenew.HasLease) {
+                                cancellationSource.Cancel();
+                            }
+                            else {
+                                var nextNumber = fib(i);
+                                calculatorResult.Numbers.Add(nextNumber);
+                                Trace.WriteLine(String.Format("ix:{0} - {1}", (i + 1), nextNumber));
+                            }
                         }
+
+                        isCalculating = false;
                     }
 
-                    isCalculating = false;
                     return calculatorResult;
 
                 }, calculatorState, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
@@ -124,12 +128,12 @@ namespace WorkerRole1
 
         public CalculatorState()
         {
-            
+
         }
     }
     public class CalculatorResult
     {
-        public List<int> Numbers {get; set;}
+        public List<int> Numbers { get; set; }
 
         public CalculatorResult()
         {

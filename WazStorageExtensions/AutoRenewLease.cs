@@ -96,15 +96,19 @@ namespace smarx.WazStorageExtensions
 
                 while (! cancellationToken.IsCancellationRequested)
                 {
-                    cancellationToken.WaitHandle.WaitOne(TimeSpan.FromSeconds(40));
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Trace.WriteLine("Start Waiting: " + DateTime.Now.ToLocalTime());
+                    //cancellationToken.WaitHandle.WaitOne(30000);
+                    Thread.Sleep(TimeSpan.FromSeconds(20));
+                    Trace.WriteLine("End Waiting: " + DateTime.Now.ToLocalTime());
 
                     retryPolicy.ExecuteAction(() => {
                         blob.RenewLease(leaseId);
                     });
+
                     var message = String.Format("Lease renewed for leaseId: '{0}'", leaseId);
                     Trace.WriteLine(message);
 
-                    cancellationToken.ThrowIfCancellationRequested();
                 }
             }, cancellationToken);
 
@@ -116,7 +120,8 @@ namespace smarx.WazStorageExtensions
                     }
                     else
                     {
-                        var message = String.Format("RenewalTask encountered an error while attempting to renew lease on blob '{0}' for leaseId '{1}'", blob.Uri.ToString(), leaseId);
+                        leaseId = null;
+                        var message = String.Format("RenewalTask encountered an error while attempting to renew lease on blob '{0}' for leaseId '{1}', Exception: {2}", blob.Uri.ToString(), leaseId, UnwindException(inner));
                         Trace.WriteLine(message);
                     }
 

@@ -13,5 +13,7 @@
     <Imports>
       <Import moduleName="Diagnostics" />
     </Imports>
+    <LocalResources></LocalResources>
+    <ConfigurationSettings></ConfigurationSettings>
   </WorkerRole>
 </ServiceDefinition>
