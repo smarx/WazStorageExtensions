@@ -23,20 +23,20 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public static string AcquireLease(this CloudBlob blob)
-        {
-            var creds = blob.ServiceClient.Credentials;
-            var transformedUri = new Uri(creds.TransformUri(blob.Uri.AbsoluteUri));
-            var req = BlobRequest.Lease(transformedUri,
-                90, // timeout (in seconds)
-                LeaseAction.Acquire, // as opposed to "break" "release" or "renew"
-                null); // name of the existing lease, if any
-            blob.ServiceClient.Credentials.SignRequest(req);
-            using (var response = req.GetResponse())
-            {
-                return response.Headers["x-ms-lease-id"];
-            }
-        }
+public static string AcquireLease(this CloudBlob blob)
+{
+    var creds = blob.ServiceClient.Credentials;
+    var transformedUri = new Uri(creds.TransformUri(blob.Uri.AbsoluteUri));
+    var req = BlobRequest.Lease(transformedUri,
+        90, // timeout (in seconds)
+        LeaseAction.Acquire, // as opposed to "break" "release" or "renew"
+        null); // name of the existing lease, if any
+    blob.ServiceClient.Credentials.SignRequest(req);
+    using (var response = req.GetResponse())
+    {
+        return response.Headers["x-ms-lease-id"];
+    }
+}
 
         private static void DoLeaseOperation(CloudBlob blob, string leaseId, LeaseAction action)
         {

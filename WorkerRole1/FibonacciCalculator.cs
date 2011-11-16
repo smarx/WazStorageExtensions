@@ -21,7 +21,8 @@ namespace WorkerRole1
             CloudStorageAccount.SetConfigurationSettingPublisher((configName, configSetter) => {
                 configSetter(RoleEnvironment.GetConfigurationSettingValue(configName));
             });
-            var acct = CloudStorageAccount.FromConfigurationSetting("Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString");
+            //var acct = CloudStorageAccount.FromConfigurationSetting("Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString");
+            var acct = CloudStorageAccount.FromConfigurationSetting("StorageConnectionString");
             var client = acct.CreateCloudBlobClient();
             var taskBlob = client.GetBlobReference("dev-task-blobs/fib-task-blob");
             var autoRenew = new AutoRenewLease(taskBlob);
@@ -47,6 +48,9 @@ namespace WorkerRole1
                         for (int i = 0; i < cs.MaxNumbersInSequence; i++) {
                             if (!autoRenew.HasLease) {
                                 cancellationSource.Cancel();
+                                isCalculating = false;
+                                Trace.WriteLine("autoRenew.HasLease is false.  Breaking out of calculation routine.");
+                                break;
                             }
                             else {
                                 var nextNumber = fib(i);

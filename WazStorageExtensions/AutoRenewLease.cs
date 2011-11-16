@@ -53,15 +53,15 @@ namespace smarx.WazStorageExtensions
         {
             this.blob = blob;
 
-            retryPolicy.ExecuteAction(() => {
+            //retryPolicy.ExecuteAction(() => {
                 blob.Container.CreateIfNotExist();
-            });
+            //});
             
             try
             {
-                retryPolicy.ExecuteAction(() => {
+                //retryPolicy.ExecuteAction(() => {
                     blob.UploadByteArray(new byte[0], new BlobRequestOptions { AccessCondition = AccessCondition.IfNoneMatch("*") });
-                });
+                //});
             }
             catch (StorageClientException e)
             {
@@ -72,11 +72,15 @@ namespace smarx.WazStorageExtensions
                 }
             }
             leaseId = blob.TryAcquireLease();
-            Trace.Write("Acquired lease, leaseId: " + leaseId);
+            
 
             if (HasLease)
             {
+                Trace.Write("Acquired lease, leaseId: " + leaseId);
                 StartRenewalTask(blob);
+            }
+            else {
+                Trace.Write("Lease not acquired.");
             }
         }
 
@@ -154,9 +158,9 @@ namespace smarx.WazStorageExtensions
                     {
                         try
                         {
-                            retryPolicy.ExecuteAction(() => {
+                            //retryPolicy.ExecuteAction(() => {
                                 blob.ReleaseLease(leaseId);
-                            });
+                            //});
                         }
                         catch (Exception ex)
                         {
@@ -177,6 +181,8 @@ namespace smarx.WazStorageExtensions
                         }
                     }
                 }
+
+                leaseId = null;
                 disposed = true;
             }
         }
