@@ -53,15 +53,15 @@ namespace smarx.WazStorageExtensions
         {
             this.blob = blob;
 
-            //retryPolicy.ExecuteAction(() => {
+            retryPolicy.ExecuteAction(() => {
                 blob.Container.CreateIfNotExist();
-            //});
+            });
             
             try
             {
-                //retryPolicy.ExecuteAction(() => {
+                retryPolicy.ExecuteAction(() => {
                     blob.UploadByteArray(new byte[0], new BlobRequestOptions { AccessCondition = AccessCondition.IfNoneMatch("*") });
-                //});
+                });
             }
             catch (StorageClientException e)
             {
@@ -76,11 +76,11 @@ namespace smarx.WazStorageExtensions
 
             if (HasLease)
             {
-                Trace.Write("Acquired lease, leaseId: " + leaseId);
+                Trace.WriteLine("Acquired lease, leaseId: " + leaseId);
                 StartRenewalTask(blob);
             }
             else {
-                Trace.Write("Lease not acquired.");
+                Trace.WriteLine("Lease not acquired.");
             }
         }
 
@@ -101,10 +101,9 @@ namespace smarx.WazStorageExtensions
                 while (! cancellationToken.IsCancellationRequested)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Trace.WriteLine("Start Waiting: " + DateTime.Now.ToLocalTime());
-                    //cancellationToken.WaitHandle.WaitOne(30000);
-                    Thread.Sleep(TimeSpan.FromSeconds(20));
-                    Trace.WriteLine("End Waiting: " + DateTime.Now.ToLocalTime());
+                    Trace.WriteLine("RenewalTask started waiting @ " + DateTime.Now.ToLocalTime());
+                    Thread.Sleep(TimeSpan.FromSeconds(30));
+                    Trace.WriteLine("RenewalTask is done waiting @ " + DateTime.Now.ToLocalTime());
 
                     retryPolicy.ExecuteAction(() => {
                         blob.RenewLease(leaseId);
@@ -120,13 +119,13 @@ namespace smarx.WazStorageExtensions
                 task.Exception.Handle(inner => {
                     if (inner is OperationCanceledException)
                     {
-                        Trace.WriteLine("RenewalTask was canceled");
+                        Trace.TraceInformation("RenewalTask was canceled");
                     }
                     else
                     {
                         leaseId = null;
                         var message = String.Format("RenewalTask encountered an error while attempting to renew lease on blob '{0}' for leaseId '{1}', Exception: {2}", blob.Uri.ToString(), leaseId, UnwindException(inner));
-                        Trace.WriteLine(message);
+                        Trace.TraceError(message);
                     }
 
                     return true;

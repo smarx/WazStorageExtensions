@@ -21,7 +21,7 @@ namespace WorkerRole1
             CloudStorageAccount.SetConfigurationSettingPublisher((configName, configSetter) => {
                 configSetter(RoleEnvironment.GetConfigurationSettingValue(configName));
             });
-            //var acct = CloudStorageAccount.FromConfigurationSetting("Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString");
+
             var acct = CloudStorageAccount.FromConfigurationSetting("StorageConnectionString");
             var client = acct.CreateCloudBlobClient();
             var taskBlob = client.GetBlobReference("dev-task-blobs/fib-task-blob");
@@ -32,7 +32,7 @@ namespace WorkerRole1
 
                 var cancellationSource = new CancellationTokenSource();
                 var cancellationToken = cancellationSource.Token;
-                var calculatorState = new CalculatorState { MaxNumbersInSequence = 45 };
+                var calculatorState = new CalculatorState { MaxNumbersInSequence = 48};
 
                 var calculatorTask = Task.Factory.StartNew<CalculatorResult>((state) => {
 
@@ -47,9 +47,9 @@ namespace WorkerRole1
                     while (autoRenew.HasLease && isCalculating && !cancellationToken.IsCancellationRequested) {
                         for (int i = 0; i < cs.MaxNumbersInSequence; i++) {
                             if (!autoRenew.HasLease) {
-                                cancellationSource.Cancel();
                                 isCalculating = false;
                                 Trace.WriteLine("autoRenew.HasLease is false.  Breaking out of calculation routine.");
+                                cancellationSource.Cancel();
                                 break;
                             }
                             else {
@@ -62,23 +62,24 @@ namespace WorkerRole1
                         isCalculating = false;
                     }
 
+                    autoRenew.Dispose();
+                    cancellationToken.ThrowIfCancellationRequested();
                     return calculatorResult;
 
                 }, calculatorState, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-                calculatorTask.ContinueWith(CompletedAction(), cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                calculatorTask.ContinueWith(CompletedAction(autoRenew), cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
-                calculatorTask.ContinueWith(ErrorAction(), TaskContinuationOptions.OnlyOnFaulted);
+                calculatorTask.ContinueWith(ErrorAction(autoRenew), TaskContinuationOptions.OnlyOnFaulted);
             }
-
-            autoRenew.Dispose();
         }
 
-        private Action<Task<CalculatorResult>> ErrorAction()
+        private Action<Task<CalculatorResult>> ErrorAction(AutoRenewLease autoRenew)
         {
             return (task) => {
                 task.Exception.Handle((inner) => {
                     if (inner is OperationCanceledException) {
+                        autoRenew.Dispose();
                         Trace.WriteLine("Calculation Canceled");
                     }
                     else {
@@ -91,9 +92,10 @@ namespace WorkerRole1
             };
         }
 
-        private Action<Task<CalculatorResult>> CompletedAction()
+        private Action<Task<CalculatorResult>> CompletedAction(AutoRenewLease autoRenew)
         {
             return (task) => {
+                autoRenew.Dispose();
                 Trace.WriteLine("Calculation is complete...");
                 Trace.WriteLine("Last number in the sequence is: " + task.Result.Numbers.Last());
 
@@ -128,6 +130,7 @@ namespace WorkerRole1
 
     public class CalculatorState
     {
+        public AutoRenewLease LeaseManager { get; set; }
         public int MaxNumbersInSequence { get; set; }
 
         public CalculatorState()

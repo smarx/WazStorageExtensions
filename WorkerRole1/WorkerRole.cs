@@ -13,8 +13,6 @@ namespace WorkerRole1
 {
     public class WorkerRole : RoleEntryPoint
     {
-        private Random random = new Random(DateTime.Now.Millisecond);
-
         public override void Run()
         {
             // This is a sample worker implementation. Replace with your logic.
@@ -25,11 +23,7 @@ namespace WorkerRole1
                 Thread.Sleep(10000);
 
                 if (! fibonacciCalculator.IsCalculating) {
-                    
-                    var randomSleepInterval = random.Next(5, 30);
-                    Trace.TraceInformation("Sleeping for '{0}'", randomSleepInterval);
-                    Thread.Sleep(TimeSpan.FromSeconds(randomSleepInterval));
-
+                    Trace.TraceInformation("Calculating...");
                     fibonacciCalculator.Calculate();
                 }
 

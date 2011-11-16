@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WazStorageExtensions", "WazStorageExtensions\WazStorageExtensions.csproj", "{DC796415-5760-4021-8E92-CB615569D84E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkerRole1", "WorkerRole1\WorkerRole1.csproj", "{0E8AAE53-4C15-4664-96D3-9683ACFC658A}"
+EndProject
+Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "WazStorageExtensions.Cloud.v14", "WazStorageExtensions.Cloud.v14\WazStorageExtensions.Cloud.v14.ccproj", "{BAC31DA9-A146-449F-B444-41987E870661}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DC796415-5760-4021-8E92-CB615569D84E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC796415-5760-4021-8E92-CB615569D84E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC796415-5760-4021-8E92-CB615569D84E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC796415-5760-4021-8E92-CB615569D84E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E8AAE53-4C15-4664-96D3-9683ACFC658A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E8AAE53-4C15-4664-96D3-9683ACFC658A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E8AAE53-4C15-4664-96D3-9683ACFC658A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E8AAE53-4C15-4664-96D3-9683ACFC658A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAC31DA9-A146-449F-B444-41987E870661}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAC31DA9-A146-449F-B444-41987E870661}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAC31DA9-A146-449F-B444-41987E870661}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAC31DA9-A146-449F-B444-41987E870661}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
