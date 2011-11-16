@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceDefinition name="WazStorageExtensions.Cloud.v14" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition">
+  <WorkerRole name="WorkerRole1">
+    <Imports>
+      <Import moduleName="Diagnostics" />
+    </Imports>
+    <ConfigurationSettings>
+      <Setting name="StorageConnectionString" />
+    </ConfigurationSettings>
+  </WorkerRole>
+</ServiceDefinition>
