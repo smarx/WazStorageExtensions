@@ -57,8 +57,11 @@ namespace smarx.WazStorageExtensions
             {
                 renewalThread = new Thread(() =>
                 {
-                    Thread.Sleep(TimeSpan.FromSeconds(40));
-                    blob.RenewLease(leaseId);
+                    while (true)
+                    {
+                        Thread.Sleep(TimeSpan.FromSeconds(40));
+                        blob.RenewLease(leaseId);
+                    }
                 });
                 renewalThread.Start();
             }
