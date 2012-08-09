@@ -36,6 +36,36 @@ namespace smarx.WazStorageExtensions
             }
         }
 
+        public static void DoEvery(CloudBlob blob, TimeSpan interval, Action action)
+        {
+            while (true)
+            {
+                var lastPerformed = DateTime.MinValue;
+                using (var arl = new AutoRenewLease(blob))
+                {
+                    if (arl.HasLease)
+                    {
+                        blob.FetchAttributes();
+                        DateTime.TryParse(blob.Metadata["lastPerformed"], out lastPerformed);
+                        lastPerformed = lastPerformed.ToUniversalTime();
+                        if (DateTime.UtcNow >= lastPerformed + interval)
+                        {
+                            action();
+                            lastPerformed = DateTime.UtcNow;
+                            blob.Metadata["lastPerformed"] = lastPerformed.ToString("R");
+                            blob.SetMetadata(arl.leaseId);
+                        }
+                    }
+                }
+                var timeLeft = (lastPerformed + interval) - DateTime.UtcNow;
+                var minimum = TimeSpan.FromSeconds(5); // so we're not polling the leased blob too fast
+                Thread.Sleep(
+                    timeLeft > minimum
+                    ? timeLeft
+                    : minimum);
+            }
+        }
+
         public AutoRenewLease(CloudBlob blob)
         {
             this.blob = blob;
