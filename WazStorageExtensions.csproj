@@ -49,14 +49,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AnalyticsExtensions.cs" />
     <Compile Include="AutoRenewLease.cs" />
     <Compile Include="ExistenceExtensions.cs" />
     <Compile Include="InitializationExtensions.cs" />
     <Compile Include="LeaseExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="QueueExtensions.cs" />
-    <Compile Include="TableStorageExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
