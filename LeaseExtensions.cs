@@ -14,7 +14,7 @@ namespace smarx.WazStorageExtensions
             try { return blob.AcquireLease(); }
             catch (WebException e)
             {
-                if (((HttpWebResponse)e.Response).StatusCode != HttpStatusCode.Conflict) // 409, already leased
+                if ((e.Response == null) || ((HttpWebResponse)e.Response).StatusCode != HttpStatusCode.Conflict) // 409, already leased
                 {
                     throw;
                 }
