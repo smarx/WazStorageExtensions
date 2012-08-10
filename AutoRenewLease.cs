@@ -2,6 +2,7 @@
 using System;
 using System.Threading;
 using System.Net;
+using System.Globalization;
 
 namespace smarx.WazStorageExtensions
 {
@@ -46,8 +47,7 @@ namespace smarx.WazStorageExtensions
                     if (arl.HasLease)
                     {
                         blob.FetchAttributes();
-                        DateTime.TryParse(blob.Metadata["lastPerformed"], out lastPerformed);
-                        lastPerformed = lastPerformed.ToUniversalTime();
+                        DateTime.TryParseExact(blob.Metadata["lastPerformed"], "R", CultureInfo.CurrentCulture, DateTimeStyles.AdjustToUniversal, out lastPerformed);
                         if (DateTime.UtcNow >= lastPerformed + interval)
                         {
                             action();
