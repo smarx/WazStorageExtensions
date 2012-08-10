@@ -41,23 +41,23 @@ namespace smarx.WazStorageExtensions
         {
             while (true)
             {
-                var lastPerformed = DateTime.MinValue;
+                var lastPerformed = DateTimeOffset.MinValue;
                 using (var arl = new AutoRenewLease(blob))
                 {
                     if (arl.HasLease)
                     {
                         blob.FetchAttributes();
-                        DateTime.TryParseExact(blob.Metadata["lastPerformed"], "R", CultureInfo.CurrentCulture, DateTimeStyles.AdjustToUniversal, out lastPerformed);
-                        if (DateTime.UtcNow >= lastPerformed + interval)
+                        DateTimeOffset.TryParseExact(blob.Metadata["lastPerformed"], "R", CultureInfo.CurrentCulture, DateTimeStyles.AdjustToUniversal, out lastPerformed);
+                        if (DateTimeOffset.UtcNow >= lastPerformed + interval)
                         {
                             action();
-                            lastPerformed = DateTime.UtcNow;
+                            lastPerformed = DateTimeOffset.UtcNow;
                             blob.Metadata["lastPerformed"] = lastPerformed.ToString("R");
                             blob.SetMetadata(arl.leaseId);
                         }
                     }
                 }
-                var timeLeft = (lastPerformed + interval) - DateTime.UtcNow;
+                var timeLeft = (lastPerformed + interval) - DateTimeOffset.UtcNow;
                 var minimum = TimeSpan.FromSeconds(5); // so we're not polling the leased blob too fast
                 Thread.Sleep(
                     timeLeft > minimum
