@@ -81,9 +81,8 @@ namespace smarx.WazStorageExtensions
             }
             catch (StorageException e)
             {
-                //TODO: Update this code for 
-                if (/*e.ErrorCode != StorageErrorCode.BlobAlreadyExists
-                    &&*/ e.RequestInformation.HttpStatusCode != (int)HttpStatusCode.PreconditionFailed) // 412 from trying to modify a blob that's leased
+                if (e.RequestInformation.HttpStatusCode != (int)HttpStatusCode.Conflict &&         // 409 from trying to modify a blob that already exists
+                    e.RequestInformation.HttpStatusCode != (int)HttpStatusCode.PreconditionFailed) // 412 from trying to modify a blob that's leased
                 {
                     throw;
                 }
