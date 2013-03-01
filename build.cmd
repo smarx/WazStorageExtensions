@@ -1,5 +1,5 @@
 for %%f in (*.csproj) do (
     msbuild %%f /p:"configuration=release"
-    nuget pack %%f -Prop Configuration=Release
-    nuget pack %%f -Prop Configuration=Release -Symbols
+    .nuget\NuGet.exe pack %%f -Prop Configuration=Release
+    .nuget\NuGet.exe pack %%f -Prop Configuration=Release -Symbols
 )

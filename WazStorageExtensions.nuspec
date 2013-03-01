@@ -9,7 +9,7 @@
     <description>$description$</description>
     <tags>azure storage</tags>
     <dependencies>
-    	<dependency id="WindowsAzure.Storage" version="1.7.0" />
+    	<dependency id="WindowsAzure.Storage" version="2.0.0" />
     </dependencies>
   </metadata>
 </package>
