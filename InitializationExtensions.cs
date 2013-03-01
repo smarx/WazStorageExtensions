@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
+using Microsoft.WindowsAzure.Storage;
 
 namespace smarx.WazStorageExtensions
 {
@@ -15,9 +15,9 @@ namespace smarx.WazStorageExtensions
             var blobClient = account.CreateCloudBlobClient();
             var queueClient = account.CreateCloudQueueClient();
 
-            if (tables != null) foreach (var table in tables) tableClient.CreateTableIfNotExist(table);
-            if (containers != null) foreach (var container in containers) blobClient.GetContainerReference(container).CreateIfNotExist();
-            if (queues != null) foreach (var queue in queues) queueClient.GetQueueReference(queue).CreateIfNotExist();
+            if (tables != null) foreach (var table in tables) tableClient.GetTableReference(table).CreateIfNotExists();
+            if (containers != null) foreach (var container in containers) blobClient.GetContainerReference(container).CreateIfNotExists();
+            if (queues != null) foreach (var queue in queues) queueClient.GetQueueReference(queue).CreateIfNotExists();
         }
     }
 }

@@ -62,7 +62,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AutoRenewLease.cs" />
-    <Compile Include="ExistenceExtensions.cs" />
     <Compile Include="InitializationExtensions.cs" />
     <Compile Include="LeaseExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

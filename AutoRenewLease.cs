@@ -1,8 +1,10 @@
-﻿using Microsoft.WindowsAzure.StorageClient;
+﻿
 using System;
 using System.Threading;
 using System.Net;
 using System.Globalization;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 
 namespace smarx.WazStorageExtensions
 {
@@ -10,13 +12,13 @@ namespace smarx.WazStorageExtensions
     {
         public bool HasLease { get { return leaseId != null; } }
 
-        private CloudBlob blob;
+        private ICloudBlob blob;
         private string leaseId;
         private Thread renewalThread;
         private bool disposed = false;
 
-        public static void DoOnce(CloudBlob blob, Action action) { DoOnce(blob, action, TimeSpan.FromSeconds(5)); }
-        public static void DoOnce(CloudBlob blob, Action action, TimeSpan pollingFrequency)
+        public static void DoOnce(ICloudBlob blob, Action action) { DoOnce(blob, action, TimeSpan.FromSeconds(5)); }
+        public static void DoOnce(ICloudBlob blob, Action action, TimeSpan pollingFrequency)
         {
             // blob.Exists has the side effect of calling blob.FetchAttributes, which populates the metadata collection
             while (!blob.Exists() || blob.Metadata["progress"] != "done")
@@ -27,7 +29,7 @@ namespace smarx.WazStorageExtensions
                     {
                         action();
                         blob.Metadata["progress"] = "done";
-                        blob.SetMetadata(arl.leaseId);
+                        blob.SetMetadata(AccessCondition.GenerateLeaseCondition(arl.leaseId));
                     }
                     else
                     {
@@ -37,7 +39,7 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public static void DoEvery(CloudBlob blob, TimeSpan interval, Action action)
+        public static void DoEvery(ICloudBlob blob, TimeSpan interval, Action action)
         {
             while (true)
             {
@@ -53,7 +55,7 @@ namespace smarx.WazStorageExtensions
                             action();
                             lastPerformed = DateTimeOffset.UtcNow;
                             blob.Metadata["lastPerformed"] = lastPerformed.ToString("R");
-                            blob.SetMetadata(arl.leaseId);
+                            blob.SetMetadata(AccessCondition.GenerateLeaseCondition(arl.leaseId));
                         }
                     }
                 }
@@ -66,18 +68,22 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public AutoRenewLease(CloudBlob blob)
+        public AutoRenewLease(ICloudBlob blob)
         {
             this.blob = blob;
-            blob.Container.CreateIfNotExist();
+            blob.Container.CreateIfNotExists();
             try
             {
-                blob.UploadByteArray(new byte[0], new BlobRequestOptions { AccessCondition = AccessCondition.IfNoneMatch("*") });
+                using (var ms = new System.IO.MemoryStream(new byte[0]))
+                {
+                    blob.UploadFromStream(ms, AccessCondition.GenerateIfNoneMatchCondition("*"));
+                }
             }
-            catch (StorageClientException e)
+            catch (StorageException e)
             {
-                if (e.ErrorCode != StorageErrorCode.BlobAlreadyExists
-                    && e.StatusCode != HttpStatusCode.PreconditionFailed) // 412 from trying to modify a blob that's leased
+                //TODO: Update this code for 
+                if (/*e.ErrorCode != StorageErrorCode.BlobAlreadyExists
+                    &&*/ e.RequestInformation.HttpStatusCode != (int)HttpStatusCode.PreconditionFailed) // 412 from trying to modify a blob that's leased
                 {
                     throw;
                 }
@@ -90,7 +96,7 @@ namespace smarx.WazStorageExtensions
                     while (true)
                     {
                         Thread.Sleep(TimeSpan.FromSeconds(40));
-                        blob.RenewLease(leaseId);
+                        blob.RenewLease(AccessCondition.GenerateLeaseCondition(leaseId));
                     }
                 });
                 renewalThread.Start();
@@ -112,7 +118,7 @@ namespace smarx.WazStorageExtensions
                     if (renewalThread != null)
                     {
                         renewalThread.Abort();
-                        blob.ReleaseLease(leaseId);
+                        blob.ReleaseLease(AccessCondition.GenerateLeaseCondition(leaseId));
                         renewalThread = null;
                     }
                 }

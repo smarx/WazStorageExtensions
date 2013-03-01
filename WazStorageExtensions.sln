@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WazStorageExtensions", "WazStorageExtensions.csproj", "{DC796415-5760-4021-8E92-CB615569D84E}"
 EndProject
 Global
