@@ -1,10 +1,11 @@
 ﻿
-using System;
-using System.Threading;
-using System.Net;
-using System.Globalization;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using System;
+using System.Globalization;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace smarx.WazStorageExtensions
 {
@@ -100,6 +101,58 @@ namespace smarx.WazStorageExtensions
                 });
                 renewalThread.Start();
             }
+        }
+
+        private AutoRenewLease(ICloudBlob blob, string leaseId, Thread renewalThread)
+        {
+            this.blob = blob;
+            this.leaseId = leaseId;
+            this.renewalThread = renewalThread;
+        }
+
+        static async Task<AutoRenewLease> GetAutoRenewLeaseAsync(ICloudBlob blob)
+        {
+            await Task.Factory.FromAsync<bool>(
+                (cb, ob) => blob.Container.BeginCreateIfNotExists(cb, ob),
+                blob.Container.EndCreateIfNotExists,
+                null);
+
+            try
+            {
+                using (var ms = new System.IO.MemoryStream(new byte[0]))
+                {
+                    await Task.Factory.FromAsync(
+                        (cb,ob) => blob.BeginUploadFromStream(ms, AccessCondition.GenerateIfNoneMatchCondition("*"), null, null, cb, ob),
+                        blob.EndUploadFromStream,
+                        null);
+                }
+            }
+            catch (StorageException e)
+            {
+                if (e.RequestInformation.HttpStatusCode != (int)HttpStatusCode.Conflict &&         // 409 from trying to modify a blob that already exists
+                    e.RequestInformation.HttpStatusCode != (int)HttpStatusCode.PreconditionFailed) // 412 from trying to modify a blob that's leased
+                {
+                    throw;
+                }
+            }
+
+            var leaseId = await blob.TryAquireLeaseAsync();
+            Thread renewalThread = null;
+
+            if (leaseId != null)
+            {
+                renewalThread = new Thread(() =>
+                {
+                    while (true)
+                    {
+                        Thread.Sleep(TimeSpan.FromSeconds(40));
+                        blob.RenewLease(AccessCondition.GenerateLeaseCondition(leaseId));
+                    }
+                });
+                renewalThread.Start();
+            }
+
+            return new AutoRenewLease(blob, leaseId, renewalThread);
         }
 
         public void Dispose()
