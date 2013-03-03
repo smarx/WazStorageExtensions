@@ -79,8 +79,9 @@
   <ItemGroup>
     <Compile Include="AutoRenewLease.cs" />
     <Compile Include="InitializationExtensions.cs" />
-    <Compile Include="LeaseExtensions.cs" />
+    <Compile Include="BlobExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TableExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
