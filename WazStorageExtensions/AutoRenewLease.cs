@@ -18,6 +18,7 @@ namespace smarx.WazStorageExtensions
         private IDisposable subscription;
         private bool disposed = false;
 
+        //TODO: write async versions of DoOnce & DoEvery
         //public static void DoOnce(ICloudBlob blob, Action action) { DoOnce(blob, action, TimeSpan.FromSeconds(5)); }
         //public static void DoOnce(ICloudBlob blob, Action action, TimeSpan pollingFrequency)
         //{
