@@ -10,9 +10,9 @@ namespace smarx.WazStorageExtensions
 {
     public static class BlobExtensions
     {
-        public static string TryAcquireLease(this ICloudBlob blob)
+        public static string TryAcquireLease(this ICloudBlob blob, TimeSpan? leaseTime = null, string proposedLeaseId = null, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
-            try { return blob.AcquireLease(null, null); }
+            try { return blob.AcquireLease(leaseTime, proposedLeaseId, accessCondition, options, operationContext); }
             catch (StorageException ex)
             {
                 if (ex.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict)
@@ -22,9 +22,9 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public static bool TryRenewLease(this ICloudBlob blob, string leaseId)
+        public static bool TryRenewLease(this ICloudBlob blob, AccessCondition accessCondition, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
-            try { blob.RenewLease(AccessCondition.GenerateLeaseCondition(leaseId)); return true; }
+            try { blob.RenewLease(accessCondition, options, operationContext); return true; }
             catch { return false; }
         }
 
@@ -46,7 +46,15 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public static Task UploadFromStreamAsync(this CloudBlockBlob blockBlob, System.IO.Stream stream, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
+        public static Task<bool> CreateIfNotExistsAsync(this CloudBlobContainer container)
+        {
+            return Task.Factory.FromAsync<bool>(
+                    (cb, ob) => container.BeginCreateIfNotExists(cb, ob),
+                    container.EndCreateIfNotExists,
+                    null);
+        }
+
+        public static Task UploadFromStreamAsync(this ICloudBlob blockBlob, System.IO.Stream stream, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
             return Task.Factory.FromAsync(
                 (cb, ob) => blockBlob.BeginUploadFromStream(stream, accessCondition, options, operationContext, cb, ob),
