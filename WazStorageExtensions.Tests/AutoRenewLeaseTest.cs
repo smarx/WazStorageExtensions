@@ -43,7 +43,7 @@ namespace WazStorageExtensions.Tests
         public async Task test_can_only_get_first_lease_async()
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
-            blob.BreakLease();
+            blob.BreakLease(TimeSpan.Zero);
 
             blob.FetchAttributes();
             Assert.Equal(LeaseStatus.Unlocked, blob.Properties.LeaseStatus);
@@ -57,17 +57,13 @@ namespace WazStorageExtensions.Tests
 
             var arl2 = await smarx.WazStorageExtensions.AutoRenewLease.GetAutoRenewLeaseAsync(blob);
             Assert.False(arl2.HasLease);
-
-            blob.FetchAttributes();
-            Assert.Equal(LeaseState.Leased, blob.Properties.LeaseState);
-            Assert.Equal(LeaseStatus.Locked, blob.Properties.LeaseStatus);
         }
 
         [Fact]
         public async Task test_dispose_autorenewlease_async()
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
-            blob.BreakLease();
+            blob.BreakLease(TimeSpan.Zero);
 
             blob.FetchAttributes();
             Assert.Equal(LeaseStatus.Unlocked, blob.Properties.LeaseStatus);
@@ -88,6 +84,7 @@ namespace WazStorageExtensions.Tests
 
             var arl3 = await smarx.WazStorageExtensions.AutoRenewLease.GetAutoRenewLeaseAsync(blob);
             Assert.True(arl3.HasLease);
+
             blob.FetchAttributes(); 
             Assert.Equal(LeaseState.Leased, blob.Properties.LeaseState);
             Assert.Equal(LeaseStatus.Locked, blob.Properties.LeaseStatus);
