@@ -19,12 +19,20 @@ namespace WazStorageExtensions.Tests
         public AutoRenewLeaseTest()
         {
             _client = _account.CreateCloudBlobClient();
+
+            var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
+
+            blob.DeleteIfExists();
+            blob.Container.DeleteIfExists();
         }
 
         public void Dispose()
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
-            blob.BreakLease(TimeSpan.Zero);
+
+            blob.FetchAttributes();
+            if (blob.Properties.LeaseState != LeaseState.Available)
+                blob.BreakLease(TimeSpan.Zero);
             blob.DeleteIfExists();
             blob.Container.DeleteIfExists();
         }
@@ -34,6 +42,7 @@ namespace WazStorageExtensions.Tests
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
 
+            Assert.False(blob.Container.Exists());
             Assert.False(blob.Exists());
 
             var arl = await smarx.WazStorageExtensions.AutoRenewLease.GetAutoRenewLeaseAsync(blob);
@@ -49,6 +58,7 @@ namespace WazStorageExtensions.Tests
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
 
+            Assert.False(blob.Container.Exists()); 
             Assert.False(blob.Exists());
 
             var arl1 = await smarx.WazStorageExtensions.AutoRenewLease.GetAutoRenewLeaseAsync(blob);
@@ -67,6 +77,7 @@ namespace WazStorageExtensions.Tests
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
 
+            Assert.False(blob.Container.Exists()); 
             Assert.False(blob.Exists());
 
             using (var arl1 = await smarx.WazStorageExtensions.AutoRenewLease.GetAutoRenewLeaseAsync(blob))
@@ -89,6 +100,27 @@ namespace WazStorageExtensions.Tests
             blob.FetchAttributes(); 
             Assert.Equal(LeaseState.Leased, blob.Properties.LeaseState);
             Assert.Equal(LeaseStatus.Locked, blob.Properties.LeaseStatus);
+        }
+
+        [Fact]
+        public async Task test_doone()
+        {
+            var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
+
+            Assert.False(blob.Container.Exists());
+            Assert.False(blob.Exists());
+            
+            int i = 0;
+
+            await smarx.WazStorageExtensions.AutoRenewLease.DoOnceAsync(blob, () => i++, TimeSpan.FromSeconds(1));
+            await smarx.WazStorageExtensions.AutoRenewLease.DoOnceAsync(blob, () => i++, TimeSpan.FromSeconds(1));
+            await smarx.WazStorageExtensions.AutoRenewLease.DoOnceAsync(blob, () => i++, TimeSpan.FromSeconds(1));
+            await smarx.WazStorageExtensions.AutoRenewLease.DoOnceAsync(blob, () => i++, TimeSpan.FromSeconds(1));
+
+            Assert.Equal(1, i);
+            Assert.Equal("done", blob.Metadata["progress"]);
+
+            
         }
     }
 }

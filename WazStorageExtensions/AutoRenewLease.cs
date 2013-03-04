@@ -4,6 +4,8 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Globalization;
 using System.Net;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,31 +20,28 @@ namespace smarx.WazStorageExtensions
         private IDisposable subscription;
         private bool disposed = false;
 
-        //TODO: write async versions of DoOnce & DoEvery
-        //public static void DoOnce(ICloudBlob blob, Action action) { DoOnce(blob, action, TimeSpan.FromSeconds(5)); }
-        //public static void DoOnce(ICloudBlob blob, Action action, TimeSpan pollingFrequency)
-        //{
-        //    // blob.Exists has the side effect of calling blob.FetchAttributes, which populates the metadata collection
-        //    while (!blob.Exists() || blob.Metadata["progress"] != "done")
-        //    {
-        //        var t = AutoRenewLease.GetAutoRenewLeaseAsync(blob);
-        //        t.Wait();
-
-        //        using (var arl = t.Result)
-        //        {
-        //            if (arl.HasLease)
-        //            {
-        //                action();
-        //                blob.Metadata["progress"] = "done";
-        //                blob.SetMetadata(AccessCondition.GenerateLeaseCondition(arl.leaseId));
-        //            }
-        //            else
-        //            {
-        //                Thread.Sleep(pollingFrequency);
-        //            }
-        //        }
-        //    }
-        //}
+        public static Task DoOnceAsync(ICloudBlob blob, Action action) { return DoOnceAsync(blob, action, TimeSpan.FromSeconds(5)); }
+        public static async Task DoOnceAsync(ICloudBlob blob, Action action, TimeSpan pollingFrequency)
+        {
+            await Observable.Timer(TimeSpan.FromSeconds(0), pollingFrequency)
+                .TakeWhile(_ => !blob.Exists() || blob.Metadata["progress"] != "done")
+                .Do(async _ =>
+                {
+                    using (var arl = await AutoRenewLease.GetAutoRenewLeaseAsync(blob))
+                    {
+                        if (arl.HasLease)
+                        {
+                            action();
+                            blob.Metadata["progress"] = "done";
+                            await blob.SetMetadataAsync(AccessCondition.GenerateLeaseCondition(arl.leaseId));
+                        }
+                    }
+                })
+                //need to concat an extra value on the end to ensure there's at least 
+                //one value for ToTask to return
+                .Concat(Observable.Return<long>(-1))
+                .ToTask();
+        }
 
         //public static void DoEvery(ICloudBlob blob, TimeSpan interval, Action action)
         //{
@@ -85,19 +84,13 @@ namespace smarx.WazStorageExtensions
 
         public static async Task<AutoRenewLease> GetAutoRenewLeaseAsync(ICloudBlob blob)
         {
-            await Task.Factory.FromAsync<bool>(
-                (cb, ob) => blob.Container.BeginCreateIfNotExists(cb, ob),
-                blob.Container.EndCreateIfNotExists,
-                null);
+            await blob.Container.CreateIfNotExistsAsync();
 
             try
             {
                 using (var ms = new System.IO.MemoryStream(new byte[0]))
                 {
-                    await Task.Factory.FromAsync(
-                        (cb,ob) => blob.BeginUploadFromStream(ms, AccessCondition.GenerateIfNoneMatchCondition("*"), null, null, cb, ob),
-                        blob.EndUploadFromStream,
-                        null);
+                    await blob.UploadFromStreamAsync(ms, AccessCondition.GenerateIfNoneMatchCondition("*"));
                 }
             }
             catch (StorageException e)
@@ -114,7 +107,7 @@ namespace smarx.WazStorageExtensions
 
             if (leaseId != null)
             {
-                subscription = System.Reactive.Linq.Observable.Interval(TimeSpan.FromSeconds(40))
+                subscription = Observable.Interval(TimeSpan.FromSeconds(40))
                     .Subscribe(
                         _ => blob.ReleaseLease(AccessCondition.GenerateLeaseCondition(leaseId))
                     );
