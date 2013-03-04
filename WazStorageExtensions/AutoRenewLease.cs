@@ -15,7 +15,7 @@ namespace smarx.WazStorageExtensions
 
         private ICloudBlob blob;
         private string leaseId;
-        private Thread renewalThread;
+        private IDisposable subscription;
         private bool disposed = false;
 
         //public static void DoOnce(ICloudBlob blob, Action action) { DoOnce(blob, action, TimeSpan.FromSeconds(5)); }
@@ -75,11 +75,11 @@ namespace smarx.WazStorageExtensions
         //    }
         //}
 
-        private AutoRenewLease(ICloudBlob blob, string leaseId, Thread renewalThread)
+        private AutoRenewLease(ICloudBlob blob, string leaseId, IDisposable subscription)
         {
             this.blob = blob;
             this.leaseId = leaseId;
-            this.renewalThread = renewalThread;
+            this.subscription = subscription;
         }
 
         public static async Task<AutoRenewLease> GetAutoRenewLeaseAsync(ICloudBlob blob)
@@ -109,22 +109,17 @@ namespace smarx.WazStorageExtensions
             }
 
             var leaseId = await blob.TryAquireLeaseAsync(TimeSpan.FromSeconds(60));
-            Thread renewalThread = null;
+            IDisposable subscription = null;
 
             if (leaseId != null)
             {
-                renewalThread = new Thread(() =>
-                {
-                    while (true)
-                    {
-                        Thread.Sleep(TimeSpan.FromSeconds(40));
-                        blob.RenewLease(AccessCondition.GenerateLeaseCondition(leaseId));
-                    }
-                });
-                renewalThread.Start();
+                subscription = System.Reactive.Linq.Observable.Interval(TimeSpan.FromSeconds(40))
+                    .Subscribe(
+                        _ => blob.ReleaseLease(AccessCondition.GenerateLeaseCondition(leaseId))
+                    );
             }
 
-            return new AutoRenewLease(blob, leaseId, renewalThread);
+            return new AutoRenewLease(blob, leaseId, subscription);
         }
 
         public void Dispose()
@@ -139,11 +134,11 @@ namespace smarx.WazStorageExtensions
             {
                 if (disposing)
                 {
-                    if (renewalThread != null)
+                    if (subscription != null)
                     {
-                        renewalThread.Abort();
+                        subscription.Dispose();
                         blob.ReleaseLease(AccessCondition.GenerateLeaseCondition(leaseId));
-                        renewalThread = null;
+                        subscription = null;
                     }
                 }
                 disposed = true;
