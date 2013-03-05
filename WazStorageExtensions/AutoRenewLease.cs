@@ -36,15 +36,26 @@ namespace smarx.WazStorageExtensions
                 try
                 {
                     if ((await blob.ExistsAsync()) && blob.Metadata["progress"] == "done")
+                    {
                         tcs.SetResult(null);
+                        return;
+                    }
 
                     using (var arl = await AutoRenewLease.GetAutoRenewLeaseAsync(blob))
                     {
                         if (arl.HasLease)
                         {
-                            action();
-                            blob.Metadata["progress"] = "done";
-                            await blob.SetMetadataAsync(AccessCondition.GenerateLeaseCondition(arl.leaseId));
+                            if (!blob.Metadata.ContainsKey("progress") || blob.Metadata["progress"] != "done")
+                            {
+                                action();
+                                blob.Metadata["progress"] = "done";
+                                await blob.SetMetadataAsync(AccessCondition.GenerateLeaseCondition(arl.leaseId));
+                            }
+                            else
+                            {
+                                tcs.SetResult(null);
+                                return;
+                            }
                         }
                     }
                 }
@@ -60,8 +71,24 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        //public static void DoEvery(ICloudBlob blob, TimeSpan interval, Action action)
-        //{
+        public static IDisposable DoEvery(ICloudBlob blob, TimeSpan interval, Action action)
+        {
+            Func<TimeSpan, Task> delay = ts => 
+            {
+                var tcs = new TaskCompletionSource<object>();
+
+                var timer = new Timer(state => 
+                {
+                    tcs.SetResult(null);
+                }, null, ts, TimeSpan.FromSeconds(-1));
+
+                return tcs.Task;
+            };
+
+
+
+            return null;
+
         //    while (true)
         //    {
         //        var lastPerformed = DateTimeOffset.MinValue;
@@ -90,7 +117,7 @@ namespace smarx.WazStorageExtensions
         //            ? timeLeft
         //            : minimum);
         //    }
-        //}
+        }
 
         private AutoRenewLease(ICloudBlob blob, string leaseId, IDisposable subscription)
         {
@@ -102,7 +129,7 @@ namespace smarx.WazStorageExtensions
         public static async Task<AutoRenewLease> GetAutoRenewLeaseAsync(ICloudBlob blob)
         {
             await blob.Container.CreateIfNotExistsAsync();
-
+            
             try
             {
                 using (var ms = new System.IO.MemoryStream(new byte[0]))
