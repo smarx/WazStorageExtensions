@@ -9,9 +9,16 @@ using System.Threading.Tasks;
 
 namespace smarx.WazStorageExtensions
 {
-    public class AutoRenewLease : IDisposable
+    public interface IAutoRenewLease : IDisposable
+    {
+        bool HasLease { get; }
+        string LeaseId { get; }
+    }
+
+    public class AutoRenewLease : IAutoRenewLease, IDisposable
     {
         public bool HasLease { get { return leaseId != null; } }
+        public string LeaseId { get { return leaseId; } }
 
         private ICloudBlob blob;
         private string leaseId;
@@ -22,14 +29,14 @@ namespace smarx.WazStorageExtensions
         public static Task DoOnceAsync(ICloudBlob blob, Action action) { return DoOnceAsync(blob, action, TimeSpan.FromSeconds(5)); }
         public static async Task DoOnceAsync(ICloudBlob blob, Action action, TimeSpan pollingFrequency)
         {
-            var tcs = new TaskCompletionSource<int>();
+            var tcs = new TaskCompletionSource<object>();
 
             TimerCallback timer_action = async _ =>
             {
                 try
                 {
                     if ((await blob.ExistsAsync()) && blob.Metadata["progress"] == "done")
-                        tcs.SetResult(0);
+                        tcs.SetResult(null);
 
                     using (var arl = await AutoRenewLease.GetAutoRenewLeaseAsync(blob))
                     {
