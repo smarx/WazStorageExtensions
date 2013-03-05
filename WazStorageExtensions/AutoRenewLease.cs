@@ -4,8 +4,6 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Globalization;
 using System.Net;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,13 +18,19 @@ namespace smarx.WazStorageExtensions
         private IDisposable subscription;
         private bool disposed = false;
 
+
         public static Task DoOnceAsync(ICloudBlob blob, Action action) { return DoOnceAsync(blob, action, TimeSpan.FromSeconds(5)); }
         public static async Task DoOnceAsync(ICloudBlob blob, Action action, TimeSpan pollingFrequency)
         {
-            await Observable.Timer(TimeSpan.FromSeconds(0), pollingFrequency)
-                .TakeWhile(_ => !blob.Exists() || blob.Metadata["progress"] != "done")
-                .Do(async _ =>
+            var tcs = new TaskCompletionSource<int>();
+
+            TimerCallback timer_action = async _ =>
+            {
+                try
                 {
+                    if ((await blob.ExistsAsync()) && blob.Metadata["progress"] == "done")
+                        tcs.SetResult(0);
+
                     using (var arl = await AutoRenewLease.GetAutoRenewLeaseAsync(blob))
                     {
                         if (arl.HasLease)
@@ -36,11 +40,17 @@ namespace smarx.WazStorageExtensions
                             await blob.SetMetadataAsync(AccessCondition.GenerateLeaseCondition(arl.leaseId));
                         }
                     }
-                })
-                //need to concat an extra value on the end to ensure there's at least 
-                //one value for ToTask to return
-                .Concat(Observable.Return<long>(-1))
-                .ToTask();
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            };
+
+            using (var timer = new Timer(timer_action, null, TimeSpan.FromSeconds(0), pollingFrequency))
+            {
+                await tcs.Task;
+            }
         }
 
         //public static void DoEvery(ICloudBlob blob, TimeSpan interval, Action action)
@@ -107,10 +117,11 @@ namespace smarx.WazStorageExtensions
 
             if (leaseId != null)
             {
-                subscription = Observable.Interval(TimeSpan.FromSeconds(40))
-                    .Subscribe(
-                        _ => blob.ReleaseLease(AccessCondition.GenerateLeaseCondition(leaseId))
-                    );
+                subscription = new Timer(
+                    _ => blob.RenewLease(AccessCondition.GenerateLeaseCondition(leaseId)), 
+                    null, 
+                    TimeSpan.FromSeconds(40), 
+                    TimeSpan.FromSeconds(40));
             }
 
             return new AutoRenewLease(blob, leaseId, subscription);

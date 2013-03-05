@@ -103,7 +103,7 @@ namespace WazStorageExtensions.Tests
         }
 
         [Fact]
-        public async Task test_doone()
+        public async Task test_doonce()
         {
             var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
 
@@ -119,8 +119,19 @@ namespace WazStorageExtensions.Tests
 
             Assert.Equal(1, i);
             Assert.Equal("done", blob.Metadata["progress"]);
+        }
 
-            
+        [Fact]
+        public void test_doonce_exception()
+        {
+            var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
+
+            Assert.False(blob.Container.Exists());
+            Assert.False(blob.Exists());
+
+            var t = smarx.WazStorageExtensions.AutoRenewLease.DoOnceAsync(blob, () => { throw new ApplicationException("failure"); }, TimeSpan.FromSeconds(1000));
+
+            Assert.Throws<AggregateException>(() => t.Wait());
         }
     }
 }
