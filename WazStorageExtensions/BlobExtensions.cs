@@ -30,6 +30,13 @@ namespace smarx.WazStorageExtensions
                 null);
         }
 
+        public static async Task FetchAttributesAsync(this ICloudBlob blob, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
+        {
+            await Task.Factory.FromAsync(
+                (cb, ob) => blob.BeginFetchAttributes(accessCondition, options, operationContext, cb, ob),
+                blob.EndFetchAttributes,
+                null);
+        }
 
         public static bool TryRenewLease(this ICloudBlob blob, AccessCondition accessCondition, BlobRequestOptions options = null, OperationContext operationContext = null)
         {

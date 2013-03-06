@@ -71,52 +71,48 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public static IDisposable DoEvery(ICloudBlob blob, TimeSpan interval, Action action)
+        class TimerState
         {
-            Func<TimeSpan, Task> delay = ts => 
+            public Timer Timer;
+        }
+
+        //Note, This version of DoEvery does not block like the original version
+        //the returned IDisposable can be used to cancel the recurring operation
+        public static IDisposable DoEvery(ICloudBlob blob, Action action, TimeSpan interval)
+        {
+            TimerCallback timer_proc = async state =>
             {
-                var tcs = new TaskCompletionSource<object>();
+                var timerState = (TimerState)state;
 
-                var timer = new Timer(state => 
+                var lastPerformed = (await blob.ExistsAsync()) && blob.Metadata.ContainsKey("lastPerformed")
+                    ? DateTimeOffset.ParseExact(blob.Metadata["lastPerformed"], "R", CultureInfo.CurrentCulture, DateTimeStyles.AdjustToUniversal)
+                    : DateTimeOffset.MinValue;
+
+                if (DateTimeOffset.UtcNow >= lastPerformed + interval)
                 {
-                    tcs.SetResult(null);
-                }, null, ts, TimeSpan.FromSeconds(-1));
+                    using (var arl = await AutoRenewLease.GetAutoRenewLeaseAsync(blob))
+                    {
+                        if (arl.HasLease)
+                        {
+                            action();
 
-                return tcs.Task;
+                            lastPerformed = DateTimeOffset.UtcNow;
+                            blob.Metadata["lastPerformed"] = lastPerformed.ToString("R");
+                            await blob.SetMetadataAsync(AccessCondition.GenerateLeaseCondition(arl.leaseId));
+                        }
+                    }
+                }
+
+                var timeLeft = (lastPerformed + interval) - DateTimeOffset.UtcNow;
+                timeLeft = timeLeft < TimeSpan.Zero ? TimeSpan.Zero : timeLeft;
+
+                timerState.Timer.Change(timeLeft, interval);
             };
 
+            var ts = new TimerState();
+            ts.Timer = new Timer(timer_proc, ts, TimeSpan.FromSeconds(1), interval);
 
-
-            return null;
-
-        //    while (true)
-        //    {
-        //        var lastPerformed = DateTimeOffset.MinValue;
-        //        var t = AutoRenewLease.GetAutoRenewLeaseAsync(blob);
-        //        t.Wait();
-
-        //        using (var arl = t.Result)
-        //        {
-        //            if (arl.HasLease)
-        //            {
-        //                blob.FetchAttributes();
-        //                DateTimeOffset.TryParseExact(blob.Metadata["lastPerformed"], "R", CultureInfo.CurrentCulture, DateTimeStyles.AdjustToUniversal, out lastPerformed);
-        //                if (DateTimeOffset.UtcNow >= lastPerformed + interval)
-        //                {
-        //                    action();
-        //                    lastPerformed = DateTimeOffset.UtcNow;
-        //                    blob.Metadata["lastPerformed"] = lastPerformed.ToString("R");
-        //                    blob.SetMetadata(AccessCondition.GenerateLeaseCondition(arl.leaseId));
-        //                }
-        //            }
-        //        }
-        //        var timeLeft = (lastPerformed + interval) - DateTimeOffset.UtcNow;
-        //        var minimum = TimeSpan.FromSeconds(5); // so we're not polling the leased blob too fast
-        //        Thread.Sleep(
-        //            timeLeft > minimum
-        //            ? timeLeft
-        //            : minimum);
-        //    }
+            return ts.Timer;
         }
 
         private AutoRenewLease(ICloudBlob blob, string leaseId, IDisposable subscription)
