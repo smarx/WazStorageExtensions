@@ -20,14 +20,14 @@ namespace WazStorageExtensions.Tests
 
         public AutoRenewLeaseTest()
         {
-            //_account = new CloudStorageAccount(new StorageCredentials("hockeyhawk", "Y/CxrkEV8R7tMz4bJWbXvm+paRAxPbHydkzsA2CInvo9BYzL9NLxu2puYgRFL4jonvqucEQVArNGWyok3rYwOw=="), true);
             _client = _account.CreateCloudBlobClient();
         }
 
         public void Dispose()
         {
-            var blob = _client.GetContainerReference("testcontainer").GetBlockBlobReference("testblob");
-            blob.Container.DeleteIfExists();
+            _client
+                .GetContainerReference("testcontainer")
+                .DeleteIfExists();
         }
 
         [Fact]

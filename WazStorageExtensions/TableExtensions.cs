@@ -11,9 +11,9 @@ namespace smarx.WazStorageExtensions
 {
     public static class TableExtensions
     {
-        public static async Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(this CloudTable table, TableQuery query, TableContinuationToken token = null)
+        public static Task<TableQuerySegment<T>> ExecuteQuerySegmentedAsync<T>(this CloudTable table, TableQuery query, TableContinuationToken token = null)
         {
-            return await Task.Factory.FromAsync<TableQuerySegment<T>>(
+            return Task.Factory.FromAsync<TableQuerySegment<T>>(
                 (cb, ob) => table.BeginExecuteQuerySegmented(query, token, cb, ob),
                 table.EndExecuteQuerySegmented<T>,
                 null);

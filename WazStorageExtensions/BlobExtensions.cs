@@ -22,17 +22,17 @@ namespace smarx.WazStorageExtensions
             }
         }
 
-        public static async Task SetMetadataAsync(this ICloudBlob blob, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
+        public static Task SetMetadataAsync(this ICloudBlob blob, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
-            await Task.Factory.FromAsync(
+            return Task.Factory.FromAsync(
                 (cb, ob) => blob.BeginSetMetadata(accessCondition, options, operationContext, cb, ob),
                 blob.EndSetMetadata,
                 null);
         }
 
-        public static async Task FetchAttributesAsync(this ICloudBlob blob, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
+        public static Task FetchAttributesAsync(this ICloudBlob blob, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
-            await Task.Factory.FromAsync(
+            return Task.Factory.FromAsync(
                 (cb, ob) => blob.BeginFetchAttributes(accessCondition, options, operationContext, cb, ob),
                 blob.EndFetchAttributes,
                 null);
@@ -44,22 +44,46 @@ namespace smarx.WazStorageExtensions
             catch { return false; }
         }
 
-        public static async Task<string> TryAquireLeaseAsync(this ICloudBlob blob, TimeSpan? leaseTime = null, string proposedLeaseId = null, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
+        public static Task<string> AquireLeaseAsync(this ICloudBlob blob, TimeSpan? leaseTime = null, string proposedLeaseId = null, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
         {
-            try
-            {
-                return await Task.Factory.FromAsync<string>(
+            return Task.Factory.FromAsync<string>(
                     (cb, ob) => blob.BeginAcquireLease(leaseTime, proposedLeaseId, accessCondition, options, operationContext, cb, ob),
                     blob.EndAcquireLease,
                     null);
-            }
-            catch (StorageException ex)
-            {
-                if (ex.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict)
-                    return null;
-                else
-                    throw;
-            }
+        }
+
+        public static Task<string> TryAquireLeaseAsync(this ICloudBlob blob, TimeSpan? leaseTime = null, string proposedLeaseId = null, AccessCondition accessCondition = null, BlobRequestOptions options = null, OperationContext operationContext = null)
+        {
+            var tcs = new TaskCompletionSource<string>();
+
+            blob.AquireLeaseAsync(leaseTime, proposedLeaseId, accessCondition, options, operationContext)
+                .ContinueWith(t =>
+                {
+                    if (!t.IsFaulted)
+                    {
+                        tcs.SetResult(t.Result);
+                    }
+                    else
+                    {
+                        if (t.Exception.InnerExceptions.Count > 1)
+                            tcs.TrySetException(t.Exception);
+                        else
+                        {
+                            var ex = t.Exception.InnerExceptions[0] as StorageException;
+
+                            if (ex != null && ex.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict)
+                            {
+                                tcs.SetResult(null);
+                            }
+                            else
+                            {
+                                tcs.TrySetException(t.Exception.InnerExceptions[0]);
+                            }
+                        }
+                    }
+                });
+
+            return tcs.Task;
         }
 
         public static Task<bool> CreateIfNotExistsAsync(this CloudBlobContainer container)
