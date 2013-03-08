@@ -1,5 +1,3 @@
-for %%f in (*.csproj) do (
-    msbuild %%f /p:"configuration=release"
-    nuget pack %%f -Prop Configuration=Release
-    nuget pack %%f -Prop Configuration=Release -Symbols
-)
+del WazStorageExtensions\bin\*.nupkg
+msbuild WazStorageExtensions.sln /p:"configuration=release"
+.nuget\NuGet.exe pack WazStorageExtensions\WazStorageExtensions.csproj -Prop Configuration=Release -Symbols -OutputDirectory WazStorageExtensions\bin 
