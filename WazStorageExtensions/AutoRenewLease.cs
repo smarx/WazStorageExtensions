@@ -7,7 +7,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace smarx.WazStorageExtensions
+namespace DevHawk.WazStorageExtensions
 {
     public interface IAutoRenewLease : IDisposable
     {

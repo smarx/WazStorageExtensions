@@ -6,7 +6,7 @@ using System.Threading;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace smarx.WazStorageExtensions
+namespace DevHawk.WazStorageExtensions
 {
     public static class BlobExtensions
     {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
-using smarx.WazStorageExtensions;
+using DevHawk.WazStorageExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace smarx.WazStorageExtensions
+namespace DevHawk.WazStorageExtensions
 {
     public static class TableExtensions
     {
