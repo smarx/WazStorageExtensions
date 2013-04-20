@@ -8,10 +8,11 @@ namespace smarx.WazStorageExtensions
 {
     public class AutoRenewLease : IDisposable
     {
-        public bool HasLease { get { return leaseId != null; } }
+        public bool HasLease { get { return LeaseId != null; } }
+
+        public string LeaseId { get; private set; }
 
         private CloudBlob blob;
-        private string leaseId;
         private Thread renewalThread;
         private bool disposed = false;
 
@@ -27,7 +28,7 @@ namespace smarx.WazStorageExtensions
                     {
                         action();
                         blob.Metadata["progress"] = "done";
-                        blob.SetMetadata(arl.leaseId);
+                        blob.SetMetadata(arl.LeaseId);
                     }
                     else
                     {
@@ -53,7 +54,7 @@ namespace smarx.WazStorageExtensions
                             action();
                             lastPerformed = DateTimeOffset.UtcNow;
                             blob.Metadata["lastPerformed"] = lastPerformed.ToString("R");
-                            blob.SetMetadata(arl.leaseId);
+                            blob.SetMetadata(arl.LeaseId);
                         }
                     }
                 }
@@ -82,7 +83,7 @@ namespace smarx.WazStorageExtensions
                     throw;
                 }
             }
-            leaseId = blob.TryAcquireLease();
+            LeaseId = blob.TryAcquireLease();
             if (HasLease)
             {
                 renewalThread = new Thread(() =>
@@ -90,7 +91,7 @@ namespace smarx.WazStorageExtensions
                     while (true)
                     {
                         Thread.Sleep(TimeSpan.FromSeconds(40));
-                        blob.RenewLease(leaseId);
+                        blob.RenewLease(LeaseId);
                     }
                 });
                 renewalThread.Start();
@@ -112,7 +113,7 @@ namespace smarx.WazStorageExtensions
                     if (renewalThread != null)
                     {
                         renewalThread.Abort();
-                        blob.ReleaseLease(leaseId);
+                        blob.ReleaseLease(LeaseId);
                         renewalThread = null;
                     }
                 }
